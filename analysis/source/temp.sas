@@ -2,20 +2,28 @@
 
 %INCLUDE "../lib/header.sas";
 
-%macro doh_validation(year);
-  data dohcheck (keep = m d y doh_bad doh_missing);
-    set IRAIS.irais&year.(keep=HIRE_DATE );
-    m = month(HIRE_DATE);
-    d = day(HIRE_DATE);
-    y = year(HIRE_DATE);
-    doh_bad = (m > 12 or m < 1 or d > 31 or d < 1 or y > &year. or y < 1930);
-    doh_missing = (m = . or d = . or y = .);
+%macro pisdups_validation(year);
+  data pischeck;
+    set IRAIS.irais&year.(keep = pis cpf date_of_birth gender);
   run;
 
-  proc means data = dohcheck;
-    var doh_missing doh_bad m d y;
-    title "doh validation for year &year.";
+  proc sort data=pischeck;
+    by pis;
   run;
+
+  data pischeck;
+    set pischeck;
+    retain pis_count;
+    by pis;
+    if first.pis then count=0;
+    count = count + 1;
+    if last.pis and count > 1 then output;
+  run;
+
+  proc freq data=pischeck;
+    tables count;
+  run;
+
 
 %mend;
 %doh_validation(2017);
